@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Certificate Generator</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Poppins", sans-serif;
+      background: linear-gradient(135deg, #eef2f3, #8e9eab);
+      display: flex;
+      flex-direction: column;
+      align-items: center; 
+      justify-content: flex-start;
+      min-height: 100vh;
+      color: #333;
+    }
+    .container {
+      background: #fff;
+      border-radius: 20px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+      padding: 40px;
+      width: 90%;
+      max-width: 600px;
+      margin-top: 50px;
+      text-align: center;
+      transition: 0.3s;
+    }
+    .container:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 6px 25px rgba(0, 0, 0, 0.2);
+    }
+    h1 { font-size: 28px; margin-bottom: 10px; color: #1e3c72; }
+    p { font-size: 15px; color: #555; margin-bottom: 30px; }
+    input[type="text"], input[type="file"] {
+      width: 100%; padding: 12px; margin-bottom: 20px;
+      border: 2px solid #ddd; border-radius: 10px; font-size: 16px;
+      transition: 0.2s;
+    }
+    input[type="text"]:focus, input[type="file"]:focus {
+      border-color: #1e3c72; outline: none;
+      box-shadow: 0 0 5px rgba(30, 60, 114, 0.4);
+    }
+    button {
+      background: linear-gradient(90deg, #1e3c72, #2a5298);
+      color: white; border: none; border-radius: 10px;
+      padding: 12px 30px; font-size: 16px; cursor: pointer; transition: 0.3s;
+    }
+    button:hover {
+      background: linear-gradient(90deg, #2a5298, #1e3c72);
+      transform: translateY(-1px);
+    }
+    canvas {
+      margin-top: 40px;
+      border: 3px solid #ddd;
+      border-radius: 10px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.2);
+      width: 100%;
+      max-width: 700px;
+      height: auto;
+    }
+    #downloadBtn {
+      display: none;
+      margin-top: 20px;
+      text-decoration: none;
+      background: linear-gradient(90deg, #43cea2, #185a9d);
+      color: white;
+      padding: 10px 25px;
+      border-radius: 10px;
+      font-weight: 500;
+      transition: 0.3s;
+    }
+    #downloadBtn:hover {
+      background: linear-gradient(90deg, #185a9d, #43cea2);
+      transform: translateY(-1px);
+    }
+    footer { margin-top: 40px; color: #555; font-size: 14px; }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h1>Certificate Generator</h1>
+    <p>Enter your name and upload your photo to generate your certificate instantly.</p>
+
+    <input type="text" id="name" placeholder="Enter your full name" />
+    <input type="file" id="photo" accept="image/*" />
+    <button onclick="generateCertificate()">Generate Certificate</button>
+
+    <canvas id="certificateCanvas" width="1199" height="768"></canvas>
+    <button id="downloadBtn" onclick="downloadPDF()">⬇️ Download Certificate</button>
+  </div>
+
+  <footer>visit again!</footer>
+
+  <!-- jsPDF Library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+  <script>
+    const canvas = document.getElementById("certificateCanvas");
+    const ctx = canvas.getContext("2d");
+    const certificateImg = new Image();
+    certificateImg.src = "Student Poster Without Guide.svg"; // background certificate image
+    let generatedName = "";
+
+    // Function to remove solid white background from uploaded photo
+    function removeBackground(img, callback) {
+      const tempCanvas = document.createElement('canvas');
+      const tempCtx = tempCanvas.getContext('2d');
+      tempCanvas.width = img.width;
+      tempCanvas.height = img.height;
+      tempCtx.drawImage(img, 0, 0);
+
+      const imageData = tempCtx.getImageData(0, 0, img.width, img.height);
+      const data = imageData.data;
+
+      for (let i = 0; i < data.length; i += 4) {
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+        if (r > 200 && g > 200 && b > 200) data[i + 3] = 0; // make white transparent
+      }
+
+      tempCtx.putImageData(imageData, 0, 0);
+      const resultImg = new Image();
+      resultImg.onload = () => callback(resultImg);
+      resultImg.src = tempCanvas.toDataURL();
+    }
+
+    function generateCertificate() {
+      const name = document.getElementById("name").value;
+      const photoFile = document.getElementById("photo").files[0];
+
+      if (!name || !photoFile) {
+        alert("Please enter your name and upload a photo!");
+        return;
+      }
+
+      generatedName = name; // store name for PDF filename
+
+      const reader = new FileReader();
+      reader.onload = function(event) {
+        const photo = new Image();
+        photo.onload = function() {
+          removeBackground(photo, function(photoWithoutBg) {
+            // Draw certificate background
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(certificateImg, 0, 0, canvas.width, canvas.height);
+
+            // Draw uploaded photo
+            const photoWidth = canvas.width * 0.18;
+            const photoHeight = photoWidth;
+            const photoX = canvas.width - photoWidth - 72;
+            const photoY = 48;
+            ctx.drawImage(photoWithoutBg, photoX, photoY, photoWidth, photoHeight);
+
+            // // Add name text
+            // ctx.font = "bold 40px Poppins";
+            // ctx.fillStyle = "#1e3c72";
+            // ctx.textAlign = "center";
+            // ctx.fillText(name, canvas.width / 2, canvas.height - 100);
+
+            // Show the download button
+            document.getElementById("downloadBtn").style.display = "inline-block";
+          });
+        };
+        photo.src = event.target.result;
+      };
+      reader.readAsDataURL(photoFile);
+    }
+
+    function downloadPDF() {
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF({
+        orientation: "landscape",
+        unit: "px",
+        format: [canvas.width, canvas.height]
+      });
+
+      const imgData = canvas.toDataURL("image/png");
+      pdf.addImage(imgData, "PNG", 0, 0, canvas.width, canvas.height);
+      pdf.save(`${generatedName}_certificate.pdf`);
+
+    }
+  </script>
+
+</body>
+</html>
